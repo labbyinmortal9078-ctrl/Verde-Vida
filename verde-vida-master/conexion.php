@@ -15,4 +15,12 @@ if (!$conex) {
 
 // Establecer charset para evitar problemas con la ñ
 mysqli_set_charset($conex, "utf8");
+if ($conex->connect_error) {
+    die("Error de conexión: " . $conex->connect_error);
+}
+
+// Verificar sesión
+echo "<!-- Debug: usuario_id = " . ($_SESSION['usuario_id'] ?? 'NO') . " -->";
+echo "<!-- Debug: usuario_rol = " . ($_SESSION['usuario_rol'] ?? 'NO') . " -->";
+echo "<!-- Debug: ID recibido = " . ($_GET['id'] ?? 'NO') . " -->";
 ?>

@@ -10,7 +10,7 @@ if (isset($_SESSION['usuario_id'])) {
 $mensaje_error = '';
 $mensaje_exito = '';
 
-//  Manejo de errores más seguro
+// Manejo de errores más seguro
 if (isset($_GET['error']) && !empty($_GET['error'])) {
     $error_valor = $_GET['error'];
     $errors = [
@@ -18,6 +18,8 @@ if (isset($_GET['error']) && !empty($_GET['error'])) {
         'email' => ' El email no es válido',
         'password' => ' Contraseña incorrecta',
         'no_user' => ' El usuario no existe. Regístrate primero',
+        'no_verificado' => ' Por favor verifica tu email antes de iniciar sesión. Revisa tu bandeja de entrada.',
+        'usuario_inactivo' => ' Tu cuenta está inactiva. Contacta al administrador.' 
     ];
     
     if (isset($errors[$error_valor])) {
@@ -55,8 +57,21 @@ if (isset($_POST['login'])) {
     if ($resultado->num_rows > 0){
         $usuario = $resultado->fetch_assoc();
         
-        //  Verificar qué nombre tiene la columna de contraseña
+        // ========== Verificar si el email está confirmado ==========
+        if (isset($usuario['email_verificado']) && $usuario['email_verificado'] == 0) {
+            header("Location: login.php?error=no_verificado");
+            exit();
+        }
+        
+        // ========== Verificar si el usuario está activo ==========
+        if(isset($usuario['activo']) && $usuario['activo'] == 0) {
+            header("Location: login.php?error=usuario_inactivo");
+            exit();
+        }
+        
+        // Verificar si la contraseña está hasheada o no
         if (isset($usuario['contraseña'])) {
+            // Si la contraseña en BD está hasheada
             $password_correcta = password_verify($password, $usuario['contraseña']);
         } elseif (isset($usuario['password'])) {
             $password_correcta = password_verify($password, $usuario['password']);
@@ -69,6 +84,9 @@ if (isset($_POST['login'])) {
             $_SESSION['usuario_nombre'] = $usuario['nombre'];
             $_SESSION['usuario_apellido'] = $usuario['apellido']; 
             $_SESSION['usuario_email'] = $usuario['email'];
+            $_SESSION['usuario_rol'] = $usuario['rol'];
+            include("permisos.php");
+            $_SESSION['modulos'] = getModulosPorRol($conex, $usuario['rol']);   
             header("Location: main.php");
             exit();
         } else {
@@ -172,7 +190,7 @@ if (isset($_POST['login'])) {
             <input type="submit" name="login" value="Iniciar Sesión" class="btn">
         </form>
         
-        <p>¿No tienes cuenta? <a href="index.php">Regístrate aquí</a></p>
+        <p>¿No tienes cuenta? <a href="registrar.php">Regístrate aquí</a></p>
         <p>¿Olvidaste tu contraseña? <a href="enviar.php">Restablecer contraseña</a></p>
     </div>
 </body>
