@@ -1,6 +1,10 @@
 <?php
 session_start();
+include_once("conexion.php");
+include_once("auditoria.php");
 
+// Registrar la acción de cierre de sesión
+registrarAuditoria($conex, "Cierre de Sesión", "usuarios", $_SESSION['usuario_id']);
 
 $_SESSION = array();
 

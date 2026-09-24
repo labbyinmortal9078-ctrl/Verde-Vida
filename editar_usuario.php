@@ -1,9 +1,9 @@
 <?php
 session_start();
-include("conexion.php");
-include("permisos.php"); 
+include_once("conexion.php");
+include_once("permisos.php");
+include_once("auditoria.php");
 
-// Verificar administrador
 if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_rol'] != 'administrador') {
     header("Location: login.php");
     exit();
@@ -12,37 +12,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_rol'] != 'administrado
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $mensaje = '';
 
-// Procesar actualización
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nuevo_rol = $_POST['rol'];
-    
-    // Evitar que un administrador se quite su propio rol
-    if ($id == $_SESSION['usuario_id'] && $nuevo_rol != 'administrador') {
-        header("Location: admin_usuarios.php?error=no_puedes_cambiarte");
-        exit();
-    }
-    
-    // Validar que el rol exista en la lista de roles permitidos
-    $roles_permitidos = getAllRoles();
-    if (!in_array($nuevo_rol, $roles_permitidos)) {
-        header("Location: admin_usuarios.php?error=1");
-        exit();
-    }
-    
-    // Usar prepared statement por seguridad
-    $stmt = $conex->prepare("UPDATE usuarios SET rol = ? WHERE ID = ?");
-    $stmt->bind_param("si", $nuevo_rol, $id);
-    
-    if ($stmt->execute()) {
-        header("Location: admin_usuarios.php?exito=1&rol=" . urlencode($nuevo_rol));
-        exit();
-    } else {
-        header("Location: admin_usuarios.php?error=1");
-        exit();
-    }
-}
-
-// Obtener datos del usuario con prepared statement
+// Obtener datos del usuario
 $stmt = $conex->prepare("SELECT * FROM usuarios WHERE ID = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
@@ -54,10 +24,60 @@ if (!$usuario) {
     exit();
 }
 
-// Obtener lista de roles desde permisos.php
+// Procesar actualización
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $nuevo_rol = $_POST['rol'];
+    $rol_anterior = $usuario['rol'];
+    $nombre_afectado = $usuario['nombre'] . ' ' . $usuario['apellido'];
+    $email_afectado = $usuario['email'];
+    
+    // Evitar que un administrador se quite su propio rol
+    if ($id == $_SESSION['usuario_id'] && $nuevo_rol != 'administrador') {
+        header("Location: admin_usuarios.php?error=no_puedes_cambiarte");
+        exit();
+    }
+    
+    // Validar que el rol exista
+    $roles_permitidos = getAllRoles();
+    if (!in_array($nuevo_rol, $roles_permitidos)) {
+        header("Location: admin_usuarios.php?error=1");
+        exit();
+    }
+    
+    // Actualizar rol
+    $stmt = $conex->prepare("UPDATE usuarios SET rol = ? WHERE ID = ?");
+    $stmt->bind_param("si", $nuevo_rol, $id);
+    
+    if ($stmt->execute()) {
+        // ========== REGISTRAR AUDITORÍA ==========
+        $detalles = json_encode([
+            'usuario_afectado' => $nombre_afectado,
+            'email_afectado' => $email_afectado,
+            'rol_anterior' => $rol_anterior,
+            'rol_nuevo' => $nuevo_rol,
+            'cambiado_por' => $_SESSION['usuario_nombre'] . ' ' . ($_SESSION['usuario_apellido'] ?? '')
+        ], JSON_UNESCAPED_UNICODE);
+        
+        registrarAuditoria(
+            $conex,
+            'Cambio de rol',
+            'usuarios',
+            $id,
+            "Rol anterior: $rol_anterior",
+            $detalles
+        );
+        // =========================================
+        
+        header("Location: admin_usuarios.php?exito=1&rol=" . urlencode($nuevo_rol));
+        exit();
+    } else {
+        header("Location: admin_usuarios.php?error=1");
+        exit();
+    }
+}
+
 $roles_disponibles = getAllRoles();
 
-// Mapeo de roles a iconos y nombres mostrables
 $iconos_roles = [
     'usuario' => '👤',
     'jardinero' => '🌱',
@@ -106,17 +126,15 @@ $nombres_roles = [
         <form method="POST">
             <select name="rol" <?php echo ($id == $_SESSION['usuario_id']) ? 'disabled' : ''; ?>>
                 <?php foreach ($roles_disponibles as $rol): ?>
-                    <?php $icono = $iconos_roles[$rol] ?? '👤'; ?>
-                    <?php $nombre = $nombres_roles[$rol] ?? $rol; ?>
                     <option value="<?php echo $rol; ?>" <?php echo $usuario['rol'] == $rol ? 'selected' : ''; ?>>
-                        <?php echo $icono; ?> <?php echo $nombre; ?>
+                        <?php echo $iconos_roles[$rol] ?? '👤'; ?> <?php echo $nombres_roles[$rol] ?? $rol; ?>
                     </option>
                 <?php endforeach; ?>
             </select>
             
             <?php if ($id == $_SESSION['usuario_id']): ?>
                 <p style="color: #dc3545; margin-top: 5px; font-size: 0.9rem;">
-                        No puedes cambiar tu propio rol
+                    🔒 No puedes cambiar tu propio rol
                 </p>
             <?php endif; ?>
             

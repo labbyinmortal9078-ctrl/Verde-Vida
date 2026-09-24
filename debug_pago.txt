@@ -1,0 +1,21 @@
+2026-09-17 21:09:14
+GET: Array
+(
+    [collection_id] => 178548982195
+    [collection_status] => approved
+    [payment_id] => 178548982195
+    [status] => approved
+    [external_reference] => user_7_1789672135
+    [payment_type] => account_money
+    [merchant_order_id] => 44554325902
+    [preference_id] => 3696662814-a0a42b74-6e61-44e6-b3dc-de2318409fe0
+    [site_id] => MLA
+    [processing_mode] => aggregator
+    [merchant_account_id] => null
+)
+
+payment_id: 178548982195
+status: approved
+preference_id: 3696662814-a0a42b74-6e61-44e6-b3dc-de2318409fe0
+usuario_id: 7
+---

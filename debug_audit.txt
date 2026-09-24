@@ -1,0 +1,56 @@
+2026-09-18 23:02:21 - === INICIO pago_exitoso.php ===
+2026-09-18 23:02:21 - usuario_id=7 | payment_id=179739843734
+2026-09-18 23:02:22 - Payment status: approved
+2026-09-18 23:02:22 - crearVentaDesdeCarrito (MP): Array
+(
+    [exito] => 1
+    [venta_id] => 3
+    [total] => 12
+    [cliente_id] => 1
+)
+
+2026-09-18 23:02:22 - Auditoría MP: OK | detalle={"Venta N°":"000003","Total":"$12.00","Método":"Mercado Pago","ID Pago MP":"179739843734"}
+2026-09-18 23:02:22 - venta_creada=SI | total=12
+2026-09-18 23:02:26 - Factura enviada OK
+2026-09-18 23:57:16 - === INICIO pago_exitoso.php ===
+2026-09-18 23:57:16 - usuario_id=7 | payment_id=178765299699
+2026-09-18 23:57:17 - Payment status: approved
+2026-09-18 23:57:17 - crearVentaDesdeCarrito (MP): Array
+(
+    [exito] => 1
+    [venta_id] => 4
+    [total] => 3546
+    [cliente_id] => 1
+)
+
+2026-09-18 23:57:17 - Auditoría MP: OK | detalle={"Venta N°":"000004","Total":"$3,546.00","Método":"Mercado Pago","ID Pago MP":"178765299699"}
+2026-09-18 23:57:17 - venta_creada=SI | total=3546
+2026-09-18 23:57:22 - Factura enviada OK
+2026-09-19 00:10:25 - === INICIO pago_exitoso.php ===
+2026-09-19 00:10:25 - usuario_id=21 | payment_id=178767823943
+2026-09-19 00:10:26 - Payment status: approved
+2026-09-19 00:10:26 - crearVentaDesdeCarrito (MP): Array
+(
+    [exito] => 1
+    [venta_id] => 5
+    [total] => 34060
+    [cliente_id] => 5
+)
+
+2026-09-19 00:10:26 - Auditoría MP: OK | detalle={"Venta N°":"000005","Total":"$34,060.00","Método":"Mercado Pago","ID Pago MP":"178767823943"}
+2026-09-19 00:10:26 - venta_creada=SI | total=34060
+2026-09-19 00:10:31 - Factura enviada OK
+2026-09-19 02:09:15 - === INICIO pago_exitoso.php ===
+2026-09-19 02:09:15 - usuario_id=7 | payment_id=178791092753
+2026-09-19 02:09:15 - Payment status: approved
+2026-09-19 02:09:15 - crearVentaDesdeCarrito (MP): Array
+(
+    [exito] => 1
+    [venta_id] => 6
+    [total] => 2.98
+    [cliente_id] => 1
+)
+
+2026-09-19 02:09:15 - Auditoría MP: OK | detalle={"Venta N°":"000006","Total":"$2.98","Método":"Mercado Pago","ID Pago MP":"178791092753"}
+2026-09-19 02:09:15 - venta_creada=SI | total=2.98
+2026-09-19 02:09:21 - Factura enviada OK

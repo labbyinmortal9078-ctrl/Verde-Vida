@@ -1,15 +1,15 @@
 <?php
 session_start();
-include("conexion.php");
+include_once("conexion.php");
+include_once("auditoria.php");
 
 // Incluir PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require 'PHPMailer-master - copia/src/Exception.php';
-require 'PHPMailer-master - copia/src/PHPMailer.php';
-require 'PHPMailer-master - copia/src/SMTP.php';
-
+require 'PHPMailer-master/src/Exception.php';
+require 'PHPMailer-master/src/PHPMailer.php';
+require 'PHPMailer-master/src/SMTP.php';
 $mensaje_error = '';
 $mensaje_exito = '';
 
@@ -32,8 +32,25 @@ if (isset($_POST['register'])){
         $confirm_password = trim($_POST['confirm_password']);  
         $fecha = date("Y-m-d H:i:s");
         
+        // ========== VALIDACIÓN DE CONTRASEÑA SEGURA ==========
+        $tiene_mayuscula = preg_match('/[A-Z]/', $password);
+        $tiene_minuscula = preg_match('/[a-z]/', $password);
+        $tiene_numero = preg_match('/[0-9]/', $password);
+        $tiene_especial = preg_match('/[!@#$%^&*()_+\-=\[\]{};:\'"\\|,.<>\/?]/', $password);
+        $longitud_minima = strlen($password) >= 8;
+        
         if ($password !== $confirm_password) {
             $mensaje_error = "❌ Las contraseñas no coinciden";
+        } elseif (!$longitud_minima) {
+            $mensaje_error = "❌ La contraseña debe tener al menos 8 caracteres";
+        } elseif (!$tiene_mayuscula) {
+            $mensaje_error = "❌ La contraseña debe incluir al menos una letra MAYÚSCULA";
+        } elseif (!$tiene_minuscula) {
+            $mensaje_error = "❌ La contraseña debe incluir al menos una letra minúscula";
+        } elseif (!$tiene_numero) {
+            $mensaje_error = "❌ La contraseña debe incluir al menos un número";
+        } elseif (!$tiene_especial) {
+            $mensaje_error = "❌ La contraseña debe incluir al menos un carácter especial (!@#$%^&*)";
         } else {
             // Verificar si el email ya existe
             $check = "SELECT ID FROM usuarios WHERE email = ?";
@@ -56,13 +73,20 @@ if (isset($_POST['register'])){
                 $stmt->bind_param("ssssssss", $name, $apellido, $email, $password_hash, $phone, $direccion, $fecha, $token_verificacion);
                 
                 if ($stmt->execute()) {
-                    // Crear enlace de verificación
+                    registrarAuditoria(
+                        $conex,
+                        'Registro de usuario',
+                        'usuarios',
+                        $stmt->insert_id,
+                        null,
+                        "Nuevo usuario registrado: $name $apellido ($email)"
+                    );
+                    
                     $protocolo = isset($_SERVER['HTTPS']) ? 'https://' : 'http://';
                     $host = $_SERVER['HTTP_HOST'];
                     $ruta = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
                     $enlace = $protocolo . $host . $ruta . '/verificar_email.php?token=' . $token_verificacion;
                     
-                    // Configurar y enviar correo
                     $mail = new PHPMailer(true);
                     
                     try {
@@ -116,17 +140,17 @@ if (isset($_POST['register'])){
                         ";
                         
                         $mail->send();
-                        $mensaje_exito = " ¡Registro exitoso! Te hemos enviado un email de verificación. Por favor revisa tu bandeja de entrada (y spam) para activar tu cuenta.";
+                        $mensaje_exito = "✅ ¡Registro exitoso! Te hemos enviado un email de verificación. Por favor revisa tu bandeja de entrada (y spam) para activar tu cuenta.";
                     } catch (Exception $e) {
-                        $mensaje_exito = " Registro exitoso, pero no se pudo enviar el email de verificación. Contacta al administrador.";
+                        $mensaje_exito = "✅ Registro exitoso, pero no se pudo enviar el email de verificación. Contacta al administrador.";
                     }
                 } else {
-                    $mensaje_error = " Error al registrar: " . $conex->error;
+                    $mensaje_error = "❌ Error al registrar: " . $conex->error;
                 }
             }
         }
     } else {
-        $mensaje_error = " Por favor, completa todos los campos correctamente";
+        $mensaje_error = "❌ Por favor, completa todos los campos correctamente";
     }
 }
 ?>
@@ -137,12 +161,14 @@ if (isset($_POST['register'])){
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verde Vida - Crear Cuenta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* ... tus estilos existentes ... */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
         }
 
         body {
@@ -153,20 +179,6 @@ if (isset($_POST['register'])){
             justify-content: center;
             padding: 2rem 1.5rem;
             position: relative;
-        }
-
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/><path d="M5 9.5L12 13l7-3.5"/></svg>');
-            background-repeat: repeat;
-            background-size: 48px;
-            opacity: 0.2;
-            pointer-events: none;
         }
 
         .card {
@@ -282,6 +294,7 @@ if (isset($_POST['register'])){
             transition: all 0.2s;
             background-color: #fff;
             outline: none;
+            width: 100%;
         }
 
         .field-group input:focus {
@@ -337,6 +350,111 @@ if (isset($_POST['register'])){
             border-color: #e07c6c;
             background-color: #fff8f7;
         }
+
+        /* ========== INDICADOR DE CONTRASEÑA SEGURA ========== */
+        .password-requirements {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: #999;
+            transition: all 0.3s;
+        }
+
+        .requirement.valid {
+            color: #28a745;
+        }
+
+        .requirement.valid .icon {
+            color: #28a745;
+        }
+
+        .requirement.invalid {
+            color: #dc3545;
+        }
+
+        .requirement.invalid .icon {
+            color: #dc3545;
+        }
+
+        .requirement .icon {
+            font-size: 0.8rem;
+            width: 14px;
+            text-align: center;
+        }
+
+        /* ========== ENLACES DE ACCESO (GLASSMORPHISM) ========== */
+        .login-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-top: 1.8rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .login-links .glass-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 14px;
+            text-decoration: none;
+            color: #1a3e30;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .login-links .glass-btn:hover {
+            background: rgba(45, 143, 110, 0.9);
+            color: white;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(45, 143, 110, 0.25);
+            border-color: transparent;
+        }
+
+        .login-links .glass-btn .emoji {
+            font-size: 1.3rem;
+        }
+
+        .login-links .glass-btn .arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .login-links .glass-btn:hover .arrow {
+            transform: translateX(5px);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .card {
+                border-radius: 1.5rem;
+            }
+            .header {
+                padding: 1.5rem;
+            }
+            .form-container {
+                padding: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -375,18 +493,38 @@ if (isset($_POST['register'])){
                 </div>
                 
                 <div class="field-group">
-                    <label>Dirección <span class="optional-badge"></span></label>
+                    <label>Dirección <span class="optional-badge">Opcional</span></label>
                     <input type="text" name="direccion" id="direccion" placeholder="Tu dirección completa">
                 </div>
                 
                 <div class="field-group">
-                    <label>Teléfono <span class="optional-badge"></span></label>
+                    <label>Teléfono <span class="optional-badge">Opcional</span></label>
                     <input type="tel" name="phone" id="telefono" placeholder="Tu número de teléfono">
                 </div>
 
                 <div class="field-group">
                     <label>Contraseña <span class="required-star">*</span></label>
-                    <input type="password" name="password" id="password" placeholder="Mínimo 6 caracteres" required>
+                    <input type="password" name="password" id="password" placeholder="Mínimo 8 caracteres" required>
+                    
+                    <!-- ========== INDICADOR DE SEGURIDAD ========== -->
+                    <div class="password-requirements">
+                        <div class="requirement" id="req-length">
+                            <span class="icon">✖</span> Mínimo 8 caracteres
+                        </div>
+                        <div class="requirement" id="req-mayuscula">
+                            <span class="icon">✖</span> Una letra MAYÚSCULA
+                        </div>
+                        <div class="requirement" id="req-minuscula">
+                            <span class="icon">✖</span> Una letra minúscula
+                        </div>
+                        <div class="requirement" id="req-numero">
+                            <span class="icon">✖</span> Un número
+                        </div>
+                        <div class="requirement" id="req-especial">
+                            <span class="icon">✖</span> Un carácter especial (!@#$%^&*)
+                        </div>
+                    </div>
+                    <!-- ================================================ -->
                 </div>
 
                 <div class="field-group">
@@ -400,6 +538,21 @@ if (isset($_POST['register'])){
             <div class="terms">
                 Al registrarte aceptas nuestros <a href="#">Términos de uso</a> y <a href="#">Política de privacidad</a>.
             </div>
+
+            <!-- ========== ENLACES DE ACCESO (GLASSMORPHISM) ========== -->
+            <div class="login-links">
+                <a href="login.php" class="glass-btn">
+                    <span class="emoji">👉</span>
+                    Iniciar Sesión
+                    <span class="arrow">→</span>
+                </a>
+                <a href="enviar.php" class="glass-btn">
+                    <span class="emoji">🔑</span>
+                    Recuperar Contraseña
+                    <span class="arrow">→</span>
+                </a>
+            </div>
+            <!-- ========================================================= -->
         </form>
     </div>
 </div>
@@ -409,6 +562,7 @@ if (isset($_POST['register'])){
     const confirmInput = document.getElementById('confirmPassword');
     const confirmErrorDiv = document.getElementById('confirmError');
 
+    // ========== VALIDACIÓN DE COINCIDENCIA ==========
     function validatePasswordMatch() {
         const password = passwordInput.value;
         const confirm = confirmInput.value;
@@ -432,22 +586,74 @@ if (isset($_POST['register'])){
 
     passwordInput.addEventListener('input', validatePasswordMatch);
     confirmInput.addEventListener('input', validatePasswordMatch);
-    
+
+    // ========== VALIDACIÓN DE CONTRASEÑA SEGURA EN TIEMPO REAL ==========
+    function validatePasswordStrength() {
+        const password = passwordInput.value;
+        
+        const hasLength = password.length >= 8;
+        const hasMayuscula = /[A-Z]/.test(password);
+        const hasMinuscula = /[a-z]/.test(password);
+        const hasNumero = /[0-9]/.test(password);
+        const hasEspecial = /[!@#$%^&*()_+\-=\[\]{};:'"\\|,.<>\/?]/.test(password);
+        
+        updateRequirement('req-length', hasLength);
+        updateRequirement('req-mayuscula', hasMayuscula);
+        updateRequirement('req-minuscula', hasMinuscula);
+        updateRequirement('req-numero', hasNumero);
+        updateRequirement('req-especial', hasEspecial);
+        
+        return hasLength && hasMayuscula && hasMinuscula && hasNumero && hasEspecial;
+    }
+
+    function updateRequirement(id, isValid) {
+        const element = document.getElementById(id);
+        if (!element) return;
+        
+        const icon = element.querySelector('.icon');
+        
+        if (isValid) {
+            element.classList.add('valid');
+            element.classList.remove('invalid');
+            icon.textContent = '✓';
+        } else {
+            element.classList.remove('valid');
+            element.classList.add('invalid');
+            icon.textContent = '✖';
+        }
+    }
+
+    passwordInput.addEventListener('input', validatePasswordStrength);
+
+    // ========== VALIDACIÓN ANTES DE ENVIAR ==========
     document.getElementById('registerForm').addEventListener('submit', function(e) {
         const password = passwordInput.value;
         const confirm = confirmInput.value;
         
+        // Validar coincidencia
         if (password !== confirm) {
             e.preventDefault();
             confirmErrorDiv.style.display = 'block';
             confirmInput.classList.add('error-input');
-            alert(' Las contraseñas no coinciden. Por favor, verifícalas.');
+            alert('❌ Las contraseñas no coinciden. Por favor, verifícalas.');
             return false;
         }
         
-        if (password.length < 6) {
+        // Validar requisitos de seguridad
+        const hasLength = password.length >= 8;
+        const hasMayuscula = /[A-Z]/.test(password);
+        const hasMinuscula = /[a-z]/.test(password);
+        const hasNumero = /[0-9]/.test(password);
+        const hasEspecial = /[!@#$%^&*()_+\-=\[\]{};:'"\\|,.<>\/?]/.test(password);
+        
+        if (!hasLength || !hasMayuscula || !hasMinuscula || !hasNumero || !hasEspecial) {
             e.preventDefault();
-            alert(' La contraseña debe tener al menos 6 caracteres.');
+            alert('⚠️ La contraseña debe cumplir con todos los requisitos de seguridad:\n\n' +
+                    '• Mínimo 8 caracteres\n' +
+                    '• Al menos una letra MAYÚSCULA\n' +
+                    '• Al menos una letra minúscula\n' +
+                    '• Al menos un número\n' +
+                    '• Al menos un carácter especial (!@#$%^&*)');
             passwordInput.focus();
             return false;
         }

@@ -1,0 +1,19 @@
+{
+    "name": "sosap/verde-vida-master",
+    "autoload": {
+        "psr-4": {
+            "Sosap\\VerdeVidaMaster\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "labby",
+            "email": "labbyinmortal9078@gmail.com"
+        }
+    ],
+    "require": {
+        "mercadopago/dx-php": "^3.16",
+        "dompdf/dompdf": "^3.1",
+        "phpmailer/phpmailer": "^7.1"
+    }
+}
